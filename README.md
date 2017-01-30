@@ -10,23 +10,25 @@ The goal of this simple python script is to analyze a Twitter profile through it
 There are plenty of things that could be added to the script, feel free to contribute! 👍
 
 ### Installation
-Update your API keys in the *secrets.py* file.
+
+First, update your API keys in the *secrets.py* file.
+
+You will need the following python packages installed:
 
 ```sh
 $ pip install tweepy ascii_graph tqdm numpy
 ```
 
-Sorry, I only tested the script with *python2*
 
-## Linux Ubuntu / Debian Flavours
+#### Linux Ubuntu / Debian Flavours
 
 You will need to do this to get pip working with python2
-
+```
 wget https://bootstrap.pypa.io/get-pip.py
 sudo python2.7 get-pip.py
 sudo pip2.7 install tweepy ascii_graph tqdm numpy
 python2 tweets_analyzer.py -n targetname
-
+```
 
 ### Usage
 
