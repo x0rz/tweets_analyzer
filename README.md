@@ -39,7 +39,8 @@ optional arguments:
                         manually apply a timezone offset (in seconds)
 ```
 
-
+Example output:
+![Twitter account activity](https://cdn-images-1.medium.com/max/800/1*KuhfDr_2bOJ7CPOzVXnwLA.png)
 
 License
 ----
