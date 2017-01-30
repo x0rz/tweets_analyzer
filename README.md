@@ -10,6 +10,7 @@ The goal of this simple python script is to analyze a Twitter profile through it
 There are plenty of things that could be added to the script, feel free to contribute! 👍
 
 ### Installation
+Update your API keys in the *secrets.py* file.
 
 ```sh
 $ pip install tweepy ascii_graph tqdm numpy
