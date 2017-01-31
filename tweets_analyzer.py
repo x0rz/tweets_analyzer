@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # Usage:
-# python2 twanalzr.py -n screen_name
+# python2 tweets_analyzer.py -n screen_name
 # 
 # Install:
 # pip install tweepy ascii_graph tqdm numpy
