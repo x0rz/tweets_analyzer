@@ -21,6 +21,7 @@ from ascii_graph.colors import *
 from ascii_graph.colordata import vcolor
 from ascii_graph.colordata import hcolor
 from tqdm import tqdm
+from urlparse import urlparse
 import tweepy
 import time
 import numpy
@@ -93,6 +94,7 @@ detected_sources = collections.Counter()
 detected_places = collections.Counter()
 geo_enabled_tweets = 0
 detected_hashtags = collections.Counter()
+detected_domains = collections.Counter()
 detected_timezones = collections.Counter()
 retweets = 0
 retweeted_users = collections.Counter()
@@ -110,6 +112,7 @@ def process_tweet(tweet):
     global detected_places
     global geo_enabled_tweets
     global detected_hashtags
+    global detected_domains
     global detected_timezones
     global retweets
     global retweeted_names
@@ -168,6 +171,13 @@ def process_tweet(tweet):
         for ht in tweet.entities['hashtags']:
             ht['text'] = "#%s" % ht['text'].encode('utf-8')
             detected_hashtags[ht['text']] += 1
+
+    # Updating domains list
+    if tweet.entities['urls']:
+        for url in tweet.entities['urls']:
+            domain = urlparse(url['expanded_url']).netloc
+            if not domain == "twitter.com": # removing twitter.com from domains (not very relevant)
+                detected_domains[domain] += 1
 
     # Updating mentioned users list
     if tweet.entities['user_mentions']:
@@ -308,6 +318,9 @@ def main():
         mentioned_users_names[id_screen_names[k]] = mentioned_users[k]
     print "[+] Top 5 most mentioned users"
     print_stats(mentioned_users_names, top=5)
+
+    print "[+] Most referenced domains (from URLs)"
+    print_stats(detected_domains, top=6)
 
 if __name__ == '__main__':
     try:
