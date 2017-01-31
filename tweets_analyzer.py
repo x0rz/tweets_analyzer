@@ -14,6 +14,7 @@ import tweepy
 import time
 import numpy
 import argparse
+import collections
 import datetime
 
 from secrets import consumer_key, consumer_secret, access_token, access_token_secret
@@ -76,15 +77,15 @@ activity_weekly = {
     "6": 0
     }
 
-detected_langs = {}
-detected_sources = {}
-detected_places = {}
+detected_langs = collections.Counter()
+detected_sources = collections.Counter()
+detected_places = collections.Counter()
 geo_enabled_tweets = 0
-detected_hashtags = {}
-detected_timezones = {}
+detected_hashtags = collections.Counter()
+detected_timezones = collections.Counter()
 retweets = 0
-retweeted_users = {}
-mentioned_users = {}
+retweeted_users = collections.Counter()
+mentioned_users = collections.Counter()
 id_screen_names = {}
 
 def process_tweet(tweet):
@@ -111,18 +112,14 @@ def process_tweet(tweet):
     tw_date = tweet.created_at
 
     # Updating most recent tweet
-    if end_date == 0:
-        end_date = tw_date
+    end_date = end_date or tw_date
     start_date = tw_date
 
     # Handling retweets
     try:
         # We use id to get unique accounts (screen_name can be changed)
         rt_id_user = tweet.retweeted_status.user.id_str
-        if rt_id_user in retweeted_users:
-            retweeted_users[rt_id_user] += 1
-        else:
-            retweeted_users[rt_id_user] = 1
+        retweeted_users[rt_id_user] += 1
 
         if not tweet.retweeted_status.user.screen_name in id_screen_names:
             id_screen_names[rt_id_user] = "@%s" % tweet.retweeted_status.user.screen_name
@@ -143,45 +140,28 @@ def process_tweet(tweet):
     activity_weekly[str(tw_date.weekday())] += 1
 
     # Updating langs
-    if tweet.lang in detected_langs:
-        detected_langs[tweet.lang] += 1
-    else:
-        detected_langs[tweet.lang] = 1
+    detected_langs[tweet.lang] += 1
 
     # Updating sources
     tweet.source = tweet.source.encode('utf-8') # fix bug in python2, some source string are unicode
-    if tweet.source in detected_sources:
-        detected_sources[tweet.source] += 1
-    else:
-        detected_sources[tweet.source] = 1
+    detected_sources[tweet.source] += 1
 
     # Detecting geolocation
     if tweet.place:
         geo_enabled_tweets += 1
         tweet.place.name = tweet.place.name.encode('utf-8')
-        if tweet.place.name in detected_places:
-            detected_places[tweet.place.name] += 1
-        else:
-            detected_places[tweet.place.name] = 1
+        detected_places[tweet.place.name] += 1
 
     # Updating hashtags list
     if tweet.entities['hashtags']:
         for ht in tweet.entities['hashtags']:
             ht['text'] = "#%s" % ht['text'].encode('utf-8')
-            if ht['text']in detected_hashtags:
-                detected_hashtags[ht['text']] += 1
-            else:
-                detected_hashtags[ht['text']] = 1
+            detected_hashtags[ht['text']] += 1
 
     # Updating mentioned users list
     if tweet.entities['user_mentions']:
         for ht in tweet.entities['user_mentions']:
-
-            if ht['id_str'] in mentioned_users:
-                mentioned_users[ht['id_str']] += 1
-            else:
-                mentioned_users[ht['id_str']] = 1
-
+            mentioned_users[ht['id_str']] += 1
             if not ht['screen_name'] in id_screen_names:
                 id_screen_names[ht['id_str']] = "@%s" % ht['screen_name']
 
@@ -198,20 +178,8 @@ def get_tweets(api, username, limit):
     return i
 
 def int_to_weekday(day):
-    if day == "0":
-        return "Monday"
-    elif day == "1":
-        return "Tuesday"
-    elif day == "2":
-        return "Wednesday"
-    elif day == "3":
-        return "Thursday"
-    elif day == "4":
-        return "Friday"
-    elif day == "5":
-        return "Saturday"
-    else:
-        return "Sunday"
+    weekdays = "Monday Tuesday Wednesday Thursday Friday Saturday Sunday".split()
+    return weekdays[int(day) % len(weekdays)]
 
 def print_stats(dataset, top=5):
     """ Displays top values by order """
@@ -337,3 +305,5 @@ if __name__ == '__main__':
         print("[\033[91m!\033[0m] Twitter error: %s" % e)
     except Exception as e:
         print("[\033[91m!\033[0m] Error: %s" % e)
+        import traceback
+        traceback.print_exc()
