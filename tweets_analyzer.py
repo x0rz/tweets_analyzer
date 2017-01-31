@@ -179,7 +179,7 @@ def get_tweets(api, username, limit):
 
 def int_to_weekday(day):
     weekdays = "Monday Tuesday Wednesday Thursday Friday Saturday Sunday".split()
-    return weekdays[day % len(weekdays)]
+    return weekdays[int(day) % len(weekdays)]
 
 def print_stats(dataset, top=5):
     """ Displays top values by order """
@@ -305,3 +305,5 @@ if __name__ == '__main__':
         print("[\033[91m!\033[0m] Twitter error: %s" % e)
     except Exception as e:
         print("[\033[91m!\033[0m] Error: %s" % e)
+        import traceback
+        traceback.print_exc()
