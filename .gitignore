@@ -1,0 +1,5 @@
+# Compiled python modules
+*.pyc
+
+# Secrets python file
+/secrets.py
