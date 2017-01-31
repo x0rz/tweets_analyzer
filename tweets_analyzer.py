@@ -1,4 +1,15 @@
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
+# Copyright (c) 2017 @x0rz
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, version 3 of the License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 #
 # Usage:
 # python2 tweets_analyzer.py -n screen_name
@@ -305,5 +316,3 @@ if __name__ == '__main__':
         print("[\033[91m!\033[0m] Twitter error: %s" % e)
     except Exception as e:
         print("[\033[91m!\033[0m] Error: %s" % e)
-        import traceback
-        traceback.print_exc()
