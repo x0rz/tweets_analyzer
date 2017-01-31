@@ -45,6 +45,8 @@ parser.add_argument('--no-timezone',  action='store_true',
 parser.add_argument('--utc-offset',  type=int,
                     help='manually apply a timezone offset (in seconds)')
 
+parser.add_argument('--word-cloud',  action='store_true',
+                    help='Display Wordcloud')
 
 args = parser.parse_args()
 
@@ -100,6 +102,7 @@ retweets = 0
 retweeted_users = collections.Counter()
 mentioned_users = collections.Counter()
 id_screen_names = {}
+text=[]
 
 def process_tweet(tweet):
     """ Processing a single Tweet and updating our datasets """
@@ -186,6 +189,8 @@ def process_tweet(tweet):
             if not ht['screen_name'] in id_screen_names:
                 id_screen_names[ht['id_str']] = "@%s" % ht['screen_name']
 
+
+    text.append(tweet.text)
 def get_tweets(api, username, limit):
     """ Download Tweets from username account """
     i = 0
@@ -251,6 +256,21 @@ def print_charts(dataset, title, weekday=False):
     for line in graph.graph(title, data):
         print(line.encode('utf-8'))
     print("")
+
+def wordcloud():
+	from wordcloud import WordCloud
+        import matplotlib.pyplot as plt
+        import re
+        global text
+        with open('./stopwords') as f:
+            sw = f.read().splitlines()
+            text=' '.join(text)
+            text=re.sub('[^a-zA-Z0-9 \n]', ' ', text).split(" ")
+            filtered_words = [word for word in text if word.lower() not in sw]
+            wordcloud = WordCloud().generate(' '.join(filtered_words))
+            plt.imshow(wordcloud)
+            plt.axis("off")
+            plt.show()
 
 def main():
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
@@ -321,6 +341,9 @@ def main():
 
     print "[+] Most referenced domains (from URLs)"
     print_stats(detected_domains, top=6)
+
+    if args.word_cloud:
+        wordcloud()
 
 if __name__ == '__main__':
     try:
