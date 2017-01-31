@@ -228,7 +228,7 @@ def print_charts(dataset, title, weekday=False):
         )
 
     for line in graph.graph(title, data):
-        print(line)
+        print(line.encode('utf-8'))
     print("")
 
 def main():
