@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright (c) 2017 @x0rz
-
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, version 3 of the License.
@@ -109,20 +109,10 @@ id_screen_names = {}
 
 def process_tweet(tweet):
     """ Processing a single Tweet and updating our datasets """
-    global activity_hourly
-    global activity_weekly
     global start_date
     global end_date
-    global detected_langs
-    global detected_sources
-    global detected_places
     global geo_enabled_tweets
-    global detected_hashtags
-    global detected_domains
-    global detected_timezones
     global retweets
-    global retweeted_names
-    global mentioned_users
 
     # Check for filters before processing any further
     if args.filter and tweet.source:
@@ -194,14 +184,9 @@ def process_tweet(tweet):
 
 def get_tweets(api, username, limit):
     """ Download Tweets from username account """
-    i = 0
-    for status in tqdm(tweepy.Cursor(api.user_timeline, screen_name=username).items(),
+    for status in tqdm(tweepy.Cursor(api.user_timeline, screen_name=username).items(limit),
                        unit="tw", total=limit):
         process_tweet(status)
-        i += 1
-        if i >= limit:
-            break
-    return i
 
 
 def int_to_weekday(day):
@@ -270,7 +255,7 @@ def main():
     auth.set_access_token(access_token, access_token_secret)
     twitter_api = tweepy.API(auth)
 
-    # Getting data on account
+    # Getting general account's metadata
     print("[+] Getting @%s account data..." % args.name)
     user_info = twitter_api.get_user(screen_name=args.name)
 
@@ -292,8 +277,12 @@ def main():
     print("[+] Retrieving last %d tweets..." % num_tweets)
 
     # Download tweets
-    num_tweets = get_tweets(twitter_api, args.name, limit=num_tweets)
+    get_tweets(twitter_api, args.name, limit=num_tweets)
     print("[+] Downloaded %d tweets from %s to %s (%d days)" % (num_tweets, start_date, end_date, (end_date - start_date).days))
+
+    # Checking if we have enough data (considering it's good to have at least 30 days of data)
+    if (end_date - start_date).days < 30 and (num_tweets < user_info.statuses_count):
+         print("[\033[91m!\033[0m] Looks like we do not have enough tweets from user, you should consider retrying (--limit)")
 
     if (end_date - start_date).days != 0:
         print("[+] Average number of tweets per day: \033[1m%.1f\033[0m" % (num_tweets / float((end_date - start_date).days)))
@@ -334,6 +323,7 @@ def main():
 
     print("[+] Most referenced domains (from URLs)")
     print_stats(detected_domains, top=6)
+
 
 if __name__ == '__main__':
     try:
