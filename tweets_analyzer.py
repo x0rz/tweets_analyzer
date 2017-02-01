@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright (c) 2017 @x0rz
 
@@ -12,22 +12,27 @@
 # GNU General Public License for more details.
 #
 # Usage:
-# python2 tweets_analyzer.py -n screen_name
-# 
+# python tweets_analyzer.py -n screen_name
+#
 # Install:
 # pip install tweepy ascii_graph tqdm numpy
+
+from __future__ import unicode_literals
+
 from ascii_graph import Pyasciigraph
-from ascii_graph.colors import *
-from ascii_graph.colordata import vcolor
+from ascii_graph.colors import Gre, Yel, Red
 from ascii_graph.colordata import hcolor
 from tqdm import tqdm
-from urlparse import urlparse
 import tweepy
-import time
 import numpy
 import argparse
 import collections
 import datetime
+
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 
 from secrets import consumer_key, consumer_secret, access_token, access_token_secret
 
@@ -39,10 +44,10 @@ parser.add_argument('-n', '--name', required=True, metavar="screen_name",
 
 parser.add_argument('-f', '--filter', help='filter by source (ex. -f android will get android tweets only)')
 
-parser.add_argument('--no-timezone',  action='store_true',
+parser.add_argument('--no-timezone', action='store_true',
                     help='removes the timezone auto-adjustment (default is UTC)')
 
-parser.add_argument('--utc-offset',  type=int,
+parser.add_argument('--utc-offset', type=int,
                     help='manually apply a timezone offset (in seconds)')
 
 
@@ -77,7 +82,7 @@ activity_hourly = {
     "21:00": 0,
     "22:00": 0,
     "23:00": 0
-    }
+}
 
 activity_weekly = {
     "0": 0,
@@ -87,7 +92,7 @@ activity_weekly = {
     "4": 0,
     "5": 0,
     "6": 0
-    }
+}
 
 detected_langs = collections.Counter()
 detected_sources = collections.Counter()
@@ -100,6 +105,7 @@ retweets = 0
 retweeted_users = collections.Counter()
 mentioned_users = collections.Counter()
 id_screen_names = {}
+
 
 def process_tweet(tweet):
     """ Processing a single Tweet and updating our datasets """
@@ -135,9 +141,9 @@ def process_tweet(tweet):
         rt_id_user = tweet.retweeted_status.user.id_str
         retweeted_users[rt_id_user] += 1
 
-        if not tweet.retweeted_status.user.screen_name in id_screen_names:
+        if tweet.retweeted_status.user.screen_name not in id_screen_names:
             id_screen_names[rt_id_user] = "@%s" % tweet.retweeted_status.user.screen_name
-        
+
         retweets += 1
     except:
         pass
@@ -157,26 +163,25 @@ def process_tweet(tweet):
     detected_langs[tweet.lang] += 1
 
     # Updating sources
-    tweet.source = tweet.source.encode('utf-8') # fix bug in python2, some source string are unicode
     detected_sources[tweet.source] += 1
 
     # Detecting geolocation
     if tweet.place:
         geo_enabled_tweets += 1
-        tweet.place.name = tweet.place.name.encode('utf-8')
+        tweet.place.name = tweet.place.name
         detected_places[tweet.place.name] += 1
 
     # Updating hashtags list
     if tweet.entities['hashtags']:
         for ht in tweet.entities['hashtags']:
-            ht['text'] = "#%s" % ht['text'].encode('utf-8')
+            ht['text'] = "#%s" % ht['text']
             detected_hashtags[ht['text']] += 1
 
     # Updating domains list
     if tweet.entities['urls']:
         for url in tweet.entities['urls']:
             domain = urlparse(url['expanded_url']).netloc
-            if not domain == "twitter.com": # removing twitter.com from domains (not very relevant)
+            if not domain == "twitter.com":  # removing twitter.com from domains (not very relevant)
                 detected_domains[domain] += 1
 
     # Updating mentioned users list
@@ -186,51 +191,58 @@ def process_tweet(tweet):
             if not ht['screen_name'] in id_screen_names:
                 id_screen_names[ht['id_str']] = "@%s" % ht['screen_name']
 
+
 def get_tweets(api, username, limit):
     """ Download Tweets from username account """
     i = 0
-    for status in tqdm(
-        tweepy.Cursor(api.user_timeline, screen_name=username).items(),
-        unit="tw", total=limit):
+    for status in tqdm(tweepy.Cursor(api.user_timeline, screen_name=username).items(),
+                       unit="tw", total=limit):
         process_tweet(status)
         i += 1
         if i >= limit:
-            break;
+            break
     return i
+
 
 def int_to_weekday(day):
     weekdays = "Monday Tuesday Wednesday Thursday Friday Saturday Sunday".split()
     return weekdays[int(day) % len(weekdays)]
 
+
 def print_stats(dataset, top=5):
     """ Displays top values by order """
-    sum = numpy.sum(dataset.values())
+    sum = numpy.sum(list(dataset.values()))
     i = 0
     if sum != 0:
         sorted_keys = sorted(dataset, key=dataset.get, reverse=True)
-        max_len_key = max([len(x) for x in sorted_keys][:top]) # use to adjust column width
+        max_len_key = max([len(x) for x in sorted_keys][:top])  # use to adjust column width
         for k in sorted_keys:
-            print(("- \033[1m{:<%d}\033[0m {:>6} {:<4}" % max_len_key).format(k, dataset[k], "(%d%%)" % ((float(dataset[k])/sum)*100)))
+            try:
+                print(("- \033[1m{:<%d}\033[0m {:>6} {:<4}" % max_len_key)
+                      .format(k, dataset[k], "(%d%%)" % ((float(dataset[k]) / sum) * 100)))
+            except:
+                import ipdb
+                ipdb.set_trace()
             i += 1
             if i >= top:
                 break
     else:
-        print ("No data")
+        print("No data")
     print("")
+
 
 def print_charts(dataset, title, weekday=False):
     """ Prints nice charts based on a dict {(key, value), ...} """
     chart = []
-    keys = dataset.keys()
-    mean = numpy.mean(dataset.values())
-    median = numpy.median(dataset.values())
+    keys = sorted(dataset.keys())
+    mean = numpy.mean(list(dataset.values()))
+    median = numpy.median(list(dataset.values()))
 
-    keys.sort()
     for key in keys:
 
-        if (dataset[key] >= median*1.33):
+        if (dataset[key] >= median * 1.33):
             displayed_key = "%s (\033[92m+\033[0m)" % (int_to_weekday(key) if weekday else key)
-        elif (dataset[key] <= median*0.66):
+        elif (dataset[key] <= median * 0.66):
             displayed_key = "%s (\033[91m-\033[0m)" % (int_to_weekday(key) if weekday else key)
         else:
             displayed_key = (int_to_weekday(key) if weekday else key)
@@ -238,7 +250,7 @@ def print_charts(dataset, title, weekday=False):
         chart.append((displayed_key, dataset[key]))
 
     thresholds = {
-        int(mean):  Gre, int(mean*2): Yel, int(mean*3): Red,
+        int(mean): Gre, int(mean * 2): Yel, int(mean * 3): Red,
     }
     data = hcolor(chart, thresholds)
 
@@ -246,11 +258,12 @@ def print_charts(dataset, title, weekday=False):
         separator_length=4,
         multivalue=False,
         human_readable='si',
-        )
+    )
 
     for line in graph.graph(title, data):
-        print(line.encode('utf-8'))
+        print(line)
     print("")
+
 
 def main():
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
@@ -289,37 +302,37 @@ def main():
     print_charts(activity_hourly, "Daily activity distribution (per hour)")
     print_charts(activity_weekly, "Weekly activity distribution (per day)", weekday=True)
 
-    print "[+] Detected languages (top 5)"
+    print("[+] Detected languages (top 5)")
     print_stats(detected_langs)
 
-    print "[+] Detected sources (top 10)"
+    print("[+] Detected sources (top 10)")
     print_stats(detected_sources, top=10)
 
     print("[+] There are \033[1m%d\033[0m geo enabled tweet(s)" % geo_enabled_tweets)
     if len(detected_places) != 0:
-        print "[+] Detected places (top 10)"
+        print("[+] Detected places (top 10)")
         print_stats(detected_places, top=10)
 
-    print "[+] Top 10 hashtags"
+    print("[+] Top 10 hashtags")
     print_stats(detected_hashtags, top=10)
 
-    print "[+] @%s did \033[1m%d\033[0m RTs out of %d tweets (%.1f%%)" % (args.name, retweets, num_tweets, (float(retweets)*100/num_tweets))
+    print("[+] @%s did \033[1m%d\033[0m RTs out of %d tweets (%.1f%%)" % (args.name, retweets, num_tweets, (float(retweets) * 100 / num_tweets)))
 
     # Converting users id to screen_names
     retweeted_users_names = {}
     for k in retweeted_users.keys():
         retweeted_users_names[id_screen_names[k]] = retweeted_users[k]
 
-    print "[+] Top 5 most retweeted users"
+    print("[+] Top 5 most retweeted users")
     print_stats(retweeted_users_names, top=5)
 
     mentioned_users_names = {}
     for k in mentioned_users.keys():
         mentioned_users_names[id_screen_names[k]] = mentioned_users[k]
-    print "[+] Top 5 most mentioned users"
+    print("[+] Top 5 most mentioned users")
     print_stats(mentioned_users_names, top=5)
 
-    print "[+] Most referenced domains (from URLs)"
+    print("[+] Most referenced domains (from URLs)")
     print_stats(detected_domains, top=6)
 
 if __name__ == '__main__':
