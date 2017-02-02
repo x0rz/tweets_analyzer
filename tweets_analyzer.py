@@ -16,7 +16,6 @@
 #
 # Install:
 # pip install tweepy ascii_graph tqdm numpy
-
 from __future__ import unicode_literals
 
 from ascii_graph import Pyasciigraph
@@ -29,6 +28,8 @@ import argparse
 import collections
 import datetime
 
+__version__ = '0.2'
+
 try:
     from urllib.parse import urlparse
 except ImportError:
@@ -36,7 +37,9 @@ except ImportError:
 
 from secrets import consumer_key, consumer_secret, access_token, access_token_secret
 
-parser = argparse.ArgumentParser(description='Analyze a Twitter account activity')
+parser = argparse.ArgumentParser(description=
+    "Simple Twitter Profile Analyzer (https://github.com/x0rz/tweets_analyzer) version %s" % __version__,
+                                 usage='%(prog)s -n <@screen_name> [options]')
 parser.add_argument('-l', '--limit', metavar='N', type=int, default=1000,
                     help='limit the number of tweets to retreive (default=1000)')
 parser.add_argument('-n', '--name', required=True, metavar="screen_name",
@@ -49,6 +52,9 @@ parser.add_argument('--no-timezone', action='store_true',
 
 parser.add_argument('--utc-offset', type=int,
                     help='manually apply a timezone offset (in seconds)')
+
+parser.add_argument('--friends', action='store_true',
+                    help='will perform quick friends analysis based on lang and timezone (rate limit = 15 requests)')
 
 
 args = parser.parse_args()
@@ -105,6 +111,8 @@ retweets = 0
 retweeted_users = collections.Counter()
 mentioned_users = collections.Counter()
 id_screen_names = {}
+friends_timezone = collections.Counter()
+friends_lang = collections.Counter()
 
 
 def process_tweet(tweet):
@@ -181,6 +189,17 @@ def process_tweet(tweet):
             if not ht['screen_name'] in id_screen_names:
                 id_screen_names[ht['id_str']] = "@%s" % ht['screen_name']
 
+
+def process_friend(friend):
+    """ Process a single friend """
+    friends_lang[friend.lang] += 1 # Getting friend language & timezone
+    if friend.time_zone:
+        friends_timezone[friend.time_zone] += 1
+
+def get_friends(api, username, limit):
+    """ Download friends and process them """
+    for friend in tqdm(tweepy.Cursor(api.friends, screen_name=username).items(limit), unit="friends", total=limit):
+        process_friend(friend)
 
 def get_tweets(api, username, limit):
     """ Download Tweets from username account """
@@ -323,6 +342,22 @@ def main():
 
     print("[+] Most referenced domains (from URLs)")
     print_stats(detected_domains, top=6)
+
+    if args.friends:
+        max_friends = numpy.amin([user_info.friends_count, 300])
+        print("[+] Getting %d @%s's friends data..." % (max_friends, args.name))
+        try:
+            get_friends(twitter_api, args.name, limit=max_friends)
+        except tweepy.error.TweepError as e:
+            if e[0][0]['code'] == 88:
+                print("[\033[91m!\033[0m] Rate limit exceeded to get friends data, you should retry in 15 minutes")
+            raise
+
+        print("[+] Friends languages")
+        print_stats(friends_lang, top=6)
+
+        print("[+] Friends timezones")
+        print_stats(friends_timezone, top=8)
 
 
 if __name__ == '__main__':

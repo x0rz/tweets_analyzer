@@ -6,6 +6,7 @@ The goal of this simple python script is to analyze a Twitter profile through it
   - Sources used (mobile application, web browser, ...)
   - Geolocations
   - Most used hashtags, most retweeted users and most mentioned users
+  - Friends analysis based on most frequent timezones/languages
 
 There are plenty of things that could be added to the script, feel free to contribute! 👍
 
@@ -20,23 +21,12 @@ $ pip install tweepy ascii_graph tqdm numpy
 ```
 
 
-#### Linux Ubuntu / Debian Flavours
-
-You will need to do this to get pip working with python2
-```
-wget https://bootstrap.pypa.io/get-pip.py
-sudo python2.7 get-pip.py
-sudo pip2.7 install tweepy ascii_graph tqdm numpy
-python2 tweets_analyzer.py -n targetname
-```
-
 ### Usage
 
 ```
-usage: tweets_analyzer.py [-h] [-l N] -n screen_name [-f FILTER]
-                          [--no-timezone] [--utc-offset UTC_OFFSET]
+usage: tweets_analyzer.py -n <@screen_name> [options]
 
-Analyze a Twitter account activity
+Simple Twitter Profile Analyzer
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -49,6 +39,8 @@ optional arguments:
   --no-timezone         removes the timezone auto-adjustment (default is UTC)
   --utc-offset UTC_OFFSET
                         manually apply a timezone offset (in seconds)
+  --friends             will perform quick friends analysis based on lang and
+                        timezone (rate limit = 15 requests)
 ```
 
 ### Example output
