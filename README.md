@@ -17,7 +17,7 @@ First, update your API keys in the *secrets.py* file.
 You will need the following python packages installed:
 
 ```sh
-$ pip install tweepy ascii_graph tqdm numpy
+$ pip install -r requirements.txt
 ```
 
 
