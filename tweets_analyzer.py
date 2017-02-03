@@ -15,18 +15,20 @@
 # python tweets_analyzer.py -n screen_name
 #
 # Install:
-# pip install tweepy ascii_graph tqdm numpy
+# pip install tweepy ascii_graph tqdm numpy nltk
 from __future__ import unicode_literals
 
 from ascii_graph import Pyasciigraph
 from ascii_graph.colors import Gre, Yel, Red
 from ascii_graph.colordata import hcolor
 from tqdm import tqdm
+from nltk.corpus import stopwords
 import tweepy
 import numpy
 import argparse
 import collections
 import datetime
+
 
 __version__ = '0.2'
 
@@ -113,6 +115,7 @@ mentioned_users = collections.Counter()
 id_screen_names = {}
 friends_timezone = collections.Counter()
 friends_lang = collections.Counter()
+detected_words = {}
 
 
 def process_tweet(tweet):
@@ -188,6 +191,18 @@ def process_tweet(tweet):
             mentioned_users[ht['id_str']] += 1
             if not ht['screen_name'] in id_screen_names:
                 id_screen_names[ht['id_str']] = "@%s" % ht['screen_name']
+
+    if tweet.text:
+        sentence = tweet.text.encode('UTF-8').lower().split()
+        # print sentence
+        # cnt = Counter()
+        # for each word in the sentence, add that word to the database and increment it's count
+        for word in sentence:
+            if word not in stopwords.words('english'):
+                if word in detected_words:
+                    detected_words[word.strip()] += 1
+                else:
+                    detected_words[word.strip()] = 1
 
 
 def process_friend(friend):
@@ -343,6 +358,9 @@ def main():
     print("[+] Most referenced domains (from URLs)")
     print_stats(detected_domains, top=6)
 
+    print "[+] Top 10 most used words"
+    print_stats(detected_words, top=10)
+
     if args.friends:
         max_friends = numpy.amin([user_info.friends_count, 300])
         print("[+] Getting %d @%s's friends data..." % (max_friends, args.name))
@@ -367,3 +385,4 @@ if __name__ == '__main__':
         print("[\033[91m!\033[0m] Twitter error: %s" % e)
     except Exception as e:
         print("[\033[91m!\033[0m] Error: %s" % e)
+
