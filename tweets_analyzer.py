@@ -16,6 +16,7 @@
 #
 # Install:
 # pip install tweepy ascii_graph tqdm numpy
+
 from __future__ import unicode_literals
 
 from ascii_graph import Pyasciigraph
@@ -37,6 +38,7 @@ except ImportError:
 
 from secrets import consumer_key, consumer_secret, access_token, access_token_secret
 
+
 parser = argparse.ArgumentParser(description=
     "Simple Twitter Profile Analyzer (https://github.com/x0rz/tweets_analyzer) version %s" % __version__,
                                  usage='%(prog)s -n <@screen_name> [options]')
@@ -56,7 +58,6 @@ parser.add_argument('--utc-offset', type=int,
 parser.add_argument('--friends', action='store_true',
                     help='will perform quick friends analysis based on lang and timezone (rate limit = 15 requests)')
 
-
 args = parser.parse_args()
 
 # Here are globals used to store data - I know it's dirty, whatever
@@ -64,40 +65,11 @@ start_date = 0
 end_date = 0
 
 activity_hourly = {
-    "00:00": 0,
-    "01:00": 0,
-    "02:00": 0,
-    "03:00": 0,
-    "04:00": 0,
-    "05:00": 0,
-    "06:00": 0,
-    "07:00": 0,
-    "08:00": 0,
-    "09:00": 0,
-    "10:00": 0,
-    "11:00": 0,
-    "12:00": 0,
-    "13:00": 0,
-    "14:00": 0,
-    "15:00": 0,
-    "16:00": 0,
-    "17:00": 0,
-    "18:00": 0,
-    "19:00": 0,
-    "20:00": 0,
-    "21:00": 0,
-    "22:00": 0,
-    "23:00": 0
+    ("%2i:00" % i).replace(" ", "0"): 0 for i in range(24)
 }
 
 activity_weekly = {
-    "0": 0,
-    "1": 0,
-    "2": 0,
-    "3": 0,
-    "4": 0,
-    "5": 0,
-    "6": 0
+    "%i": 0 for i in range(7)
 }
 
 detected_langs = collections.Counter()
@@ -179,7 +151,7 @@ def process_tweet(tweet):
     if tweet.entities['urls']:
         for url in tweet.entities['urls']:
             domain = urlparse(url['expanded_url']).netloc
-            if not domain == "twitter.com":  # removing twitter.com from domains (not very relevant)
+            if domain != "twitter.com":  # removing twitter.com from domains (not very relevant)
                 detected_domains[domain] += 1
 
     # Updating mentioned users list
@@ -196,10 +168,12 @@ def process_friend(friend):
     if friend.time_zone:
         friends_timezone[friend.time_zone] += 1
 
+
 def get_friends(api, username, limit):
     """ Download friends and process them """
     for friend in tqdm(tweepy.Cursor(api.friends, screen_name=username).items(limit), unit="friends", total=limit):
         process_friend(friend)
+
 
 def get_tweets(api, username, limit):
     """ Download Tweets from username account """
@@ -217,7 +191,7 @@ def print_stats(dataset, top=5):
     """ Displays top values by order """
     sum = numpy.sum(list(dataset.values()))
     i = 0
-    if sum != 0:
+    if sum:
         sorted_keys = sorted(dataset, key=dataset.get, reverse=True)
         max_len_key = max([len(x) for x in sorted_keys][:top])  # use to adjust column width
         for k in sorted_keys:
@@ -232,7 +206,7 @@ def print_stats(dataset, top=5):
                 break
     else:
         print("No data")
-    print("")
+    print()
 
 
 def print_charts(dataset, title, weekday=False):
@@ -243,7 +217,6 @@ def print_charts(dataset, title, weekday=False):
     median = numpy.median(list(dataset.values()))
 
     for key in keys:
-
         if (dataset[key] >= median * 1.33):
             displayed_key = "%s (\033[92m+\033[0m)" % (int_to_weekday(key) if weekday else key)
         elif (dataset[key] <= median * 0.66):
@@ -266,7 +239,7 @@ def print_charts(dataset, title, weekday=False):
 
     for line in graph.graph(title, data):
         print(line)
-    print("")
+    print()
 
 
 def main():
