@@ -69,7 +69,7 @@ activity_hourly = {
 }
 
 activity_weekly = {
-    "%i": 0 for i in range(7)
+    "%i" % i: 0 for i in range(7)
 }
 
 detected_langs = collections.Counter()
