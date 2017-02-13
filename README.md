@@ -12,19 +12,19 @@ There are plenty of things that could be added to the script, feel free to contr
 
 ### Installation
 
-First, update your API keys in the *secrets.py* file.
+⚠ First, update your API keys in the *secrets.py* file. To get API keys go to https://apps.twitter.com/
 
-You will need the following python packages installed:
+You will need the following python packages installed: tweepy, ascii_graph, tqdm, numpy
 
 ```sh
-$ pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 
 ### Usage
 
 ```
-usage: tweets_analyzer.py -n <@screen_name> [options]
+usage: tweets_analyzer.py -n <screen_name> [options]
 
 Simple Twitter Profile Analyzer
 

@@ -29,7 +29,7 @@ import argparse
 import collections
 import datetime
 
-__version__ = '0.2'
+__version__ = '0.2-dev'
 
 try:
     from urllib.parse import urlparse
@@ -41,7 +41,7 @@ from secrets import consumer_key, consumer_secret, access_token, access_token_se
 
 parser = argparse.ArgumentParser(description=
     "Simple Twitter Profile Analyzer (https://github.com/x0rz/tweets_analyzer) version %s" % __version__,
-                                 usage='%(prog)s -n <@screen_name> [options]')
+                                 usage='%(prog)s -n <screen_name> [options]')
 parser.add_argument('-l', '--limit', metavar='N', type=int, default=1000,
                     help='limit the number of tweets to retreive (default=1000)')
 parser.add_argument('-n', '--name', required=True, metavar="screen_name",
@@ -206,7 +206,7 @@ def print_stats(dataset, top=5):
                 break
     else:
         print("No data")
-    print()
+    print("")
 
 
 def print_charts(dataset, title, weekday=False):
@@ -239,7 +239,7 @@ def print_charts(dataset, title, weekday=False):
 
     for line in graph.graph(title, data):
         print(line)
-    print()
+    print("")
 
 
 def main():
