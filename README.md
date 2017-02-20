@@ -14,6 +14,8 @@ There are plenty of things that could be added to the script, feel free to contr
 
 ⚠ First, update your API keys in the *secrets.py* file. To get API keys go to https://apps.twitter.com/
 
+Python v2.7 or newer is required
+
 You will need the following python packages installed: tweepy, ascii_graph, tqdm, numpy
 
 ```sh
