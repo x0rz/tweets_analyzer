@@ -194,7 +194,8 @@ def print_stats(dataset, top=5):
     if sum:
         sorted_keys = sorted(dataset, key=dataset.get, reverse=True)
         max_len_key = max([len(x) for x in sorted_keys][:top])  # use to adjust column width
-        for k in sorted_keys:
+        for k2 in sorted_keys:
+            k = k2.encode('ascii', 'ignore').decode('ascii') 
             try:
                 print(("- \033[1m{:<%d}\033[0m {:>6} {:<4}" % max_len_key)
                       .format(k, dataset[k], "(%d%%)" % ((float(dataset[k]) / sum) * 100)))
@@ -218,11 +219,11 @@ def print_charts(dataset, title, weekday=False):
 
     for key in keys:
         if (dataset[key] >= median * 1.33):
-            displayed_key = "%s (\033[92m+\033[0m)" % (int_to_weekday(key) if weekday else key)
+            displayed_key = "%s (\033[92m+\033[0m)" % (int_to_weekday(key) if weekday else key).encode('ascii', 'ignore').decode('ascii') 
         elif (dataset[key] <= median * 0.66):
-            displayed_key = "%s (\033[91m-\033[0m)" % (int_to_weekday(key) if weekday else key)
+            displayed_key = "%s (\033[91m-\033[0m)" % (int_to_weekday(key) if weekday else key).encode('ascii', 'ignore').decode('ascii') 
         else:
-            displayed_key = (int_to_weekday(key) if weekday else key)
+            displayed_key = (int_to_weekday(key) if weekday else key).encode('ascii', 'ignore').decode('ascii') 
 
         chart.append((displayed_key, dataset[key]))
 
@@ -237,7 +238,8 @@ def print_charts(dataset, title, weekday=False):
         human_readable='si',
     )
 
-    for line in graph.graph(title, data):
+    for line2 in graph.graph(title, data):
+        line = line2.encode('ascii', 'ignore').decode('ascii') 
         print(line)
     print("")
 
