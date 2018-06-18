@@ -28,6 +28,7 @@ import numpy
 import argparse
 import collections
 import datetime
+import re
 
 __version__ = '0.2-dev'
 
@@ -58,11 +59,15 @@ parser.add_argument('--utc-offset', type=int,
 parser.add_argument('--friends', action='store_true',
                     help='will perform quick friends analysis based on lang and timezone (rate limit = 15 requests)')
 
+parser.add_argument('-e', '--export', metavar='path/to/file', type=str,
+                    help='exports results to file')
+
 args = parser.parse_args()
 
 # Here are globals used to store data - I know it's dirty, whatever
 start_date = 0
 end_date = 0
+export = ""
 
 activity_hourly = {
     ("%2i:00" % i).replace(" ", "0"): 0 for i in range(24)
@@ -85,7 +90,6 @@ mentioned_users = collections.Counter()
 id_screen_names = {}
 friends_timezone = collections.Counter()
 friends_lang = collections.Counter()
-
 
 def process_tweet(tweet):
     """ Processing a single Tweet and updating our datasets """
@@ -186,6 +190,31 @@ def int_to_weekday(day):
     weekdays = "Monday Tuesday Wednesday Thursday Friday Saturday Sunday".split()
     return weekdays[int(day) % len(weekdays)]
 
+def cprint(strng):
+    print(strng)
+    export_string(strng)
+
+def export_string(strng):
+    global export
+    if args.export is not None:
+        export+=strng+"\n"
+
+def export_stats(dataset):
+    global export
+    if args.export is not None:
+        print ("d")
+
+def export_write():
+    global export
+    if args.export is not None:
+        text_file = open(args.export, "w")
+        # remove ANSI color codes for export
+        ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
+        export = ansi_escape.sub('', export)
+        # remove non ascii characters
+        export = "".join(i for i in export if ord(i)<128)
+        text_file.write(export)
+        text_file.close()
 
 def print_stats(dataset, top=5):
     """ Displays top values by order """
@@ -196,7 +225,7 @@ def print_stats(dataset, top=5):
         max_len_key = max([len(x) for x in sorted_keys][:top])  # use to adjust column width
         for k in sorted_keys:
             try:
-                print(("- \033[1m{:<%d}\033[0m {:>6} {:<4}" % max_len_key)
+                cprint(("- \033[1m{:<%d}\033[0m {:>6} {:<4}" % max_len_key)
                       .format(k, dataset[k], "(%d%%)" % ((float(dataset[k]) / sum) * 100)))
             except:
                 import ipdb
@@ -205,8 +234,8 @@ def print_stats(dataset, top=5):
             if i >= top:
                 break
     else:
-        print("No data")
-    print("")
+        cprint("No data")
+    cprint("")
 
 
 def print_charts(dataset, title, weekday=False):
@@ -215,6 +244,7 @@ def print_charts(dataset, title, weekday=False):
     keys = sorted(dataset.keys())
     mean = numpy.mean(list(dataset.values()))
     median = numpy.median(list(dataset.values()))
+    export_string(title)
 
     for key in keys:
         if (dataset[key] >= median * 1.33):
@@ -223,7 +253,7 @@ def print_charts(dataset, title, weekday=False):
             displayed_key = "%s (\033[91m-\033[0m)" % (int_to_weekday(key) if weekday else key)
         else:
             displayed_key = (int_to_weekday(key) if weekday else key)
-
+        export_string("%s - %s" % (dataset[key], (int_to_weekday(key) if weekday else key)))
         chart.append((displayed_key, dataset[key]))
 
     thresholds = {
@@ -239,7 +269,7 @@ def print_charts(dataset, title, weekday=False):
 
     for line in graph.graph(title, data):
         print(line)
-    print("")
+    cprint("")
 
 
 def main():
@@ -248,95 +278,99 @@ def main():
     twitter_api = tweepy.API(auth)
 
     # Getting general account's metadata
-    print("[+] Getting @%s account data..." % args.name)
+    cprint("[+] Getting @%s account data..." % args.name)
     user_info = twitter_api.get_user(screen_name=args.name)
 
-    print("[+] lang           : \033[1m%s\033[0m" % user_info.lang)
-    print("[+] geo_enabled    : \033[1m%s\033[0m" % user_info.geo_enabled)
-    print("[+] time_zone      : \033[1m%s\033[0m" % user_info.time_zone)
-    print("[+] utc_offset     : \033[1m%s\033[0m" % user_info.utc_offset)
+    cprint("[+] lang           : \033[1m%s\033[0m" % user_info.lang)
+    cprint("[+] geo_enabled    : \033[1m%s\033[0m" % user_info.geo_enabled)
+    cprint("[+] time_zone      : \033[1m%s\033[0m" % user_info.time_zone)
+    cprint("[+] utc_offset     : \033[1m%s\033[0m" % user_info.utc_offset)
 
     if user_info.utc_offset is None:
-        print("[\033[91m!\033[0m] Can't get specific timezone for this user")
+        cprint("[\033[91m!\033[0m] Can't get specific timezone for this user")
 
     if args.utc_offset:
-        print("[\033[91m!\033[0m] Applying timezone offset %d (--utc-offset)" % args.utc_offset)
+        cprint("[\033[91m!\033[0m] Applying timezone offset %d (--utc-offset)" % args.utc_offset)
 
-    print("[+] statuses_count : \033[1m%s\033[0m" % user_info.statuses_count)
+    cprint("[+] statuses_count : \033[1m%s\033[0m" % user_info.statuses_count)
 
     # Will retreive all Tweets from account (or max limit)
     num_tweets = numpy.amin([args.limit, user_info.statuses_count])
-    print("[+] Retrieving last %d tweets..." % num_tweets)
+    cprint("[+] Retrieving last %d tweets..." % num_tweets)
 
     # Download tweets
     get_tweets(twitter_api, args.name, limit=num_tweets)
-    print("[+] Downloaded %d tweets from %s to %s (%d days)" % (num_tweets, start_date, end_date, (end_date - start_date).days))
+    cprint("[+] Downloaded %d tweets from %s to %s (%d days)" % (num_tweets, start_date, end_date, (end_date - start_date).days))
 
     # Checking if we have enough data (considering it's good to have at least 30 days of data)
     if (end_date - start_date).days < 30 and (num_tweets < user_info.statuses_count):
-         print("[\033[91m!\033[0m] Looks like we do not have enough tweets from user, you should consider retrying (--limit)")
+         cprint("[\033[91m!\033[0m] Looks like we do not have enough tweets from user, you should consider retrying (--limit)")
 
     if (end_date - start_date).days != 0:
-        print("[+] Average number of tweets per day: \033[1m%.1f\033[0m" % (num_tweets / float((end_date - start_date).days)))
+        cprint("[+] Average number of tweets per day: \033[1m%.1f\033[0m" % (num_tweets / float((end_date - start_date).days)))
 
     # Print activity distrubution charts
+    export_string("")
     print_charts(activity_hourly, "Daily activity distribution (per hour)")
     print_charts(activity_weekly, "Weekly activity distribution (per day)", weekday=True)
 
-    print("[+] Detected languages (top 5)")
+    cprint("[+] Detected languages (top 5)")
     print_stats(detected_langs)
+    export_stats(detected_langs)
 
-    print("[+] Detected sources (top 10)")
+    cprint("[+] Detected sources (top 10)")
     print_stats(detected_sources, top=10)
+    export_stats(detected_sources)
 
-    print("[+] There are \033[1m%d\033[0m geo enabled tweet(s)" % geo_enabled_tweets)
+    cprint("[+] There are \033[1m%d\033[0m geo enabled tweet(s)" % geo_enabled_tweets)
     if len(detected_places) != 0:
-        print("[+] Detected places (top 10)")
+        cprint("[+] Detected places (top 10)")
         print_stats(detected_places, top=10)
 
-    print("[+] Top 10 hashtags")
+    cprint("[+] Top 10 hashtags")
     print_stats(detected_hashtags, top=10)
 
-    print("[+] @%s did \033[1m%d\033[0m RTs out of %d tweets (%.1f%%)" % (args.name, retweets, num_tweets, (float(retweets) * 100 / num_tweets)))
+    cprint("[+] @%s did \033[1m%d\033[0m RTs out of %d tweets (%.1f%%)" % (args.name, retweets, num_tweets, (float(retweets) * 100 / num_tweets)))
 
     # Converting users id to screen_names
     retweeted_users_names = {}
     for k in retweeted_users.keys():
         retweeted_users_names[id_screen_names[k]] = retweeted_users[k]
 
-    print("[+] Top 5 most retweeted users")
+    cprint("[+] Top 5 most retweeted users")
     print_stats(retweeted_users_names, top=5)
 
     mentioned_users_names = {}
     for k in mentioned_users.keys():
         mentioned_users_names[id_screen_names[k]] = mentioned_users[k]
-    print("[+] Top 5 most mentioned users")
+    cprint("[+] Top 5 most mentioned users")
     print_stats(mentioned_users_names, top=5)
 
-    print("[+] Most referenced domains (from URLs)")
+    cprint("[+] Most referenced domains (from URLs)")
     print_stats(detected_domains, top=6)
 
     if args.friends:
         max_friends = numpy.amin([user_info.friends_count, 300])
-        print("[+] Getting %d @%s's friends data..." % (max_friends, args.name))
+        cprint("[+] Getting %d @%s's friends data..." % (max_friends, args.name))
         try:
             get_friends(twitter_api, args.name, limit=max_friends)
         except tweepy.error.TweepError as e:
             if e[0][0]['code'] == 88:
-                print("[\033[91m!\033[0m] Rate limit exceeded to get friends data, you should retry in 15 minutes")
+                cprint("[\033[91m!\033[0m] Rate limit exceeded to get friends data, you should retry in 15 minutes")
             raise
 
-        print("[+] Friends languages")
+        cprint("[+] Friends languages")
         print_stats(friends_lang, top=6)
 
-        print("[+] Friends timezones")
+        cprint("[+] Friends timezones")
         print_stats(friends_timezone, top=8)
 
+    export_write()
 
 if __name__ == '__main__':
     try:
         main()
     except tweepy.error.TweepError as e:
-        print("[\033[91m!\033[0m] Twitter error: %s" % e)
+        cprint("[\033[91m!\033[0m] Twitter error: %s" % e)
     except Exception as e:
-        print("[\033[91m!\033[0m] Error: %s" % e)
+        cprint("[\033[91m!\033[0m] Error: %s" % e)
