@@ -78,7 +78,7 @@ parser.add_argument('-j', '--json', action='store_true',
                     help='outputs json')
 
 parser.add_argument('-s', '--save', action='store_true',
-                    help='saves tweets to /%s/{twitter_handle}/{yyyy-mm-dd_HH-MM-SS}.json' %save_folder)
+                    help='saves tweets to %s/{twitter_handle}/{yyyy-mm-dd_HH-MM-SS}.json' %save_folder)
 
 parser.add_argument('--no-color', action='store_true',
                     help='disables colored output')

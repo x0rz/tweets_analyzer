@@ -46,6 +46,9 @@ optional arguments:
   -e path/to/file, --export path/to/file
                         exports results to file
   -j, --json            outputs json
+  -s, --save            saves tweets to tweets/{twitter_handle}/{yyyy-mm-
+                        dd_HH-MM-SS}.json
+  --no-color            disables colored output
 ```
 
 ### Example output
