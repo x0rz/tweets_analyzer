@@ -30,6 +30,8 @@ import collections
 import datetime
 import re
 import json
+import sys
+import os
 
 __version__ = '0.2-dev'
 
@@ -39,6 +41,15 @@ except ImportError:
     from urlparse import urlparse
 
 from secrets import consumer_key, consumer_secret, access_token, access_token_secret
+
+# Here are sglobals used to store data - I know it's dirty, whatever
+start_date = 0
+end_date = 0
+export = ""
+jsono = {}
+save_folder = "tweets"
+color_supported = True
+ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
 
 
 parser = argparse.ArgumentParser(description=
@@ -66,13 +77,15 @@ parser.add_argument('-e', '--export', metavar='path/to/file', type=str,
 parser.add_argument('-j', '--json', action='store_true',
                     help='outputs json')
 
+parser.add_argument('-s', '--save', action='store_true',
+                    help='saves tweets to /%s/{twitter_handle}/{yyyy-mm-dd_HH-MM-SS}.json' %save_folder)
+
+parser.add_argument('--no-color', action='store_true',
+                    help='disables colored output')
+
+
 args = parser.parse_args()
 
-# Here are globals used to store data - I know it's dirty, whatever
-start_date = 0
-end_date = 0
-export = ""
-jsono = {}
 
 activity_hourly = {
     ("%2i:00" % i).replace(" ", "0"): 0 for i in range(24)
@@ -184,21 +197,38 @@ def get_friends(api, username, limit):
         process_friend(friend)
 
 
-def get_tweets(api, username, limit):
+def get_tweets(api, username, fh, limit):
     """ Download Tweets from username account """
     if args.json is False:
         for status in tqdm(tweepy.Cursor(api.user_timeline, screen_name=username).items(limit), unit="tw", total=limit):
             process_tweet(status)
+            if args.save:
+                fh.write(str(json.dumps(status._json))+",")
     else:
         for status in (tweepy.Cursor(api.user_timeline, screen_name=username).items(limit)):
             process_tweet(status)
-
+            if args.save:
+                fh.write(str(json.dumps(status._json))+",")
 
 def int_to_weekday(day):
     weekdays = "Monday Tuesday Wednesday Thursday Friday Saturday Sunday".split()
     return weekdays[int(day) % len(weekdays)]
 
+def supports_color():
+    if args.no_color:
+        return False
+    # copied from https://github.com/django/django/blob/master/django/core/management/color.py
+    plat = sys.platform
+    supported_platform = plat != 'Pocket PC' and (plat != 'win32' or 'ANSICON' in os.environ)
+    # isatty is not always implemented, #6223.
+    is_a_tty = hasattr(sys.stdout, 'isatty') and sys.stdout.isatty()
+    if not supported_platform or not is_a_tty:
+        return False
+    return True
+
 def cprint(strng):
+    if not color_supported:
+        strng = ansi_escape.sub('', strng)
     if args.json is False:
         print(strng)
         export_string(strng)
@@ -214,7 +244,6 @@ def export_write():
         text_file = open(args.export, "w")
         if args.json is False:
             # remove ANSI color codes for export
-            ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
             export = ansi_escape.sub('', export)
             # remove non ascii characters
             export = "".join(i for i in export if ord(i)<128)
@@ -268,6 +297,7 @@ def print_charts(dataset, title, weekday=False):
     thresholds = {
         int(mean): Gre, int(mean * 2): Yel, int(mean * 3): Red,
     }
+
     data = hcolor(chart, thresholds)
 
     graph = Pyasciigraph(
@@ -278,14 +308,29 @@ def print_charts(dataset, title, weekday=False):
 
     if args.json is False:
         for line in graph.graph(title, data):
+            if not color_supported:
+                ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
+                line = ansi_escape.sub('', line)
             print(line)
     cprint("")
 
 
 def main():
+    global color_supported
+    color_supported = supports_color()
+
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_token_secret)
     twitter_api = tweepy.API(auth)
+
+    now = datetime.datetime.now()
+    save_path = save_folder+"/"+args.name
+    save_file = False
+    if args.save:
+        if not os.path.exists(save_path):
+             os.makedirs(save_path)
+        save_file = open(save_path+"/"+now.strftime("%Y-%m-%d_%H-%M-%S")+".json","w")
+        save_file.write("[")
 
     # Getting general account's metadata
     cprint("[+] Getting @%s account data..." % args.name)
@@ -319,7 +364,7 @@ def main():
     jsono['status_retrieving'] = num_tweets
 
     # Download tweets
-    get_tweets(twitter_api, args.name, limit=num_tweets)
+    get_tweets(twitter_api, args.name, save_file, limit=num_tweets)
     cprint("[+] Downloaded %d tweets from %s to %s (%d days)" % (num_tweets, start_date, end_date, (end_date - start_date).days))
     jsono['status_start_date'] = "%s" % start_date
     jsono['status_end_date'] = "%s" % end_date
@@ -407,6 +452,12 @@ def main():
     if args.json is not False:
         print(json.dumps(jsono))
     export_write()
+
+    if args.save:
+        save_file.seek(-1, os.SEEK_END) # drop last ,
+        save_file.truncate()
+        save_file.write("]")
+        save_file.close()
 
 if __name__ == '__main__':
     try:
