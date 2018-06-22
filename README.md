@@ -43,6 +43,12 @@ optional arguments:
                         manually apply a timezone offset (in seconds)
   --friends             will perform quick friends analysis based on lang and
                         timezone (rate limit = 15 requests)
+  -e path/to/file, --export path/to/file
+                        exports results to file
+  -j, --json            outputs json
+  -s, --save            saves tweets to tweets/{twitter_handle}/{yyyy-mm-
+                        dd_HH-MM-SS}.json
+  --no-color            disables colored output
 ```
 
 ### Example output
