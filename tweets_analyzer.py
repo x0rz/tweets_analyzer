@@ -83,6 +83,9 @@ parser.add_argument('-s', '--save', action='store_true',
 parser.add_argument('--no-color', action='store_true',
                     help='disables colored output')
 
+parser.add_argument('--no-retweets', action='store_true',
+                    help='does not evaluate retweets')
+
 
 args = parser.parse_args()
 
@@ -115,6 +118,12 @@ def process_tweet(tweet):
     global end_date
     global geo_enabled_tweets
     global retweets
+
+    if args.no_retweets:
+        if hasattr(tweet, 'retweeted_status'):
+            return
+        if hasattr(tweet, 'is_quote_status') and tweet.is_quote_status:
+            return
 
     # Check for filters before processing any further
     if args.filter and tweet.source:
@@ -407,17 +416,17 @@ def main():
     print_stats(detected_hashtags, top=10)
     jsono["top_hashtags"] = detected_hashtags
 
-    cprint("[+] @%s did \033[1m%d\033[0m RTs out of %d tweets (%.1f%%)" % (args.name, retweets, num_tweets, (float(retweets) * 100 / num_tweets)))
-    jsono['rt_count'] = retweets
+    if not args.no_retweets:
+        cprint("[+] @%s did \033[1m%d\033[0m RTs out of %d tweets (%.1f%%)" % (args.name, retweets, num_tweets, (float(retweets) * 100 / num_tweets)))
+        jsono['rt_count'] = retweets
+        # Converting users id to screen_names
+        retweeted_users_names = {}
+        for k in retweeted_users.keys():
+            retweeted_users_names[id_screen_names[k]] = retweeted_users[k]
 
-    # Converting users id to screen_names
-    retweeted_users_names = {}
-    for k in retweeted_users.keys():
-        retweeted_users_names[id_screen_names[k]] = retweeted_users[k]
-
-    cprint("[+] Top 5 most retweeted users")
-    print_stats(retweeted_users_names, top=5)
-    jsono["top_retweeted_users"] = retweeted_users_names
+        cprint("[+] Top 5 most retweeted users")
+        print_stats(retweeted_users_names, top=5)
+        jsono["top_retweeted_users"] = retweeted_users_names
 
     mentioned_users_names = {}
     for k in mentioned_users.keys():
