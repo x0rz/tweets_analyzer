@@ -49,6 +49,7 @@ optional arguments:
   -s, --save            saves tweets to tweets/{twitter_handle}/{yyyy-mm-
                         dd_HH-MM-SS}.json
   --no-color            disables colored output
+  --no-retweets         does not evaluate retweets
 ```
 
 ### Example output
