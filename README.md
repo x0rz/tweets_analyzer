@@ -22,6 +22,22 @@ You will need the following python packages installed: tweepy, ascii_graph, tqdm
 pip install -r requirements.txt
 ```
 
+put these into `.env`
+
+```sh
+TWITTER_CONSUMER_SECRET=xxxxxx
+TWITTER_CONSUMER_KEY=xxxxxx
+TWITTER_ACCESS_TOKEN=xxxxxx
+TWITTER_ACCESS_TOKEN_SECRET=xxxxxx
+```
+
+then load the .env file and your keys are now present
+
+```sh
+source source .env
+```
+
+
 
 ### Usage
 

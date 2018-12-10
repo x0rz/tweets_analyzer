@@ -1,5 +1,6 @@
 # Compiled python modules
 *.pyc
+.env
 
 # Secrets python file
 /secrets.py
