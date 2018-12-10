@@ -74,7 +74,7 @@ optional arguments:
 # will build the docker image and tag it
 make build
 # will run it so you can append tags
-make run -n x0rz --friends
+docker run --rm -it --env-file ${PWD}/.env -v $PWD:/src tweets_analyzer:latest -n x0rz --friends
 ```
 
 ### Example output
