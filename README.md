@@ -68,6 +68,15 @@ optional arguments:
   --no-retweets         does not evaluate retweets
 ```
 
+### Docker
+
+```sh
+# will build the docker image and tag it
+make build
+# will run it so you can append tags
+make run -n x0rz --friends
+```
+
 ### Example output
 
 ![Twitter account activity](https://cdn-images-1.medium.com/max/800/1*KuhfDr_2bOJ7CPOzVXnwLA.png)
