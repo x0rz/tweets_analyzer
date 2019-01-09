@@ -111,6 +111,7 @@ mentioned_users = collections.Counter()
 id_screen_names = {}
 friends_timezone = collections.Counter()
 friends_lang = collections.Counter()
+tweets_count = 0
 
 def process_tweet(tweet):
     """ Processing a single Tweet and updating our datasets """
@@ -118,6 +119,10 @@ def process_tweet(tweet):
     global end_date
     global geo_enabled_tweets
     global retweets
+    global tweets_count
+
+    # Increment counter of actually downloaded tweets
+    tweets_count += 1
 
     if args.no_retweets:
         if hasattr(tweet, 'retweeted_status'):
@@ -374,19 +379,19 @@ def main():
 
     # Download tweets
     get_tweets(twitter_api, args.name, save_file, limit=num_tweets)
-    cprint("[+] Downloaded %d tweets from %s to %s (%d days)" % (num_tweets, start_date, end_date, (end_date - start_date).days))
+    cprint("[+] Downloaded %d tweets from %s to %s (%d days)" % (tweets_count, start_date, end_date, (end_date - start_date).days))
     jsono['status_start_date'] = "%s" % start_date
     jsono['status_end_date'] = "%s" % end_date
     jsono['status_days'] = "%s" % (end_date - start_date).days
 
     # Checking if we have enough data (considering it's good to have at least 30 days of data)
-    if (end_date - start_date).days < 30 and (num_tweets < user_info.statuses_count):
+    if (end_date - start_date).days < 30 and (tweets_count < user_info.statuses_count):
          cprint("[\033[91m!\033[0m] Looks like we do not have enough tweets from user, you should consider retrying (--limit)")
          jsono['status_note'] = "Looks like we do not have enough tweets from user, you should consider retrying (--limit)"
 
     if (end_date - start_date).days != 0:
-        cprint("[+] Average number of tweets per day: \033[1m%.1f\033[0m" % (num_tweets / float((end_date - start_date).days)))
-        jsono['status_average_tweets_per_day'] = (num_tweets / float((end_date - start_date).days))
+        cprint("[+] Average number of tweets per day: \033[1m%.1f\033[0m" % (tweets_count / float((end_date - start_date).days)))
+        jsono['status_average_tweets_per_day'] = (tweets_count / float((end_date - start_date).days))
 
     # Print activity distrubution charts
     if args.json is False:
@@ -417,7 +422,7 @@ def main():
     jsono["top_hashtags"] = detected_hashtags
 
     if not args.no_retweets:
-        cprint("[+] @%s did \033[1m%d\033[0m RTs out of %d tweets (%.1f%%)" % (args.name, retweets, num_tweets, (float(retweets) * 100 / num_tweets)))
+        cprint("[+] @%s did \033[1m%d\033[0m RTs out of %d tweets (%.1f%%)" % (args.name, retweets, tweets_count, (float(retweets) * 100 / tweets_count)))
         jsono['rt_count'] = retweets
         # Converting users id to screen_names
         retweeted_users_names = {}
