@@ -22,12 +22,14 @@ from __future__ import unicode_literals
 from ascii_graph import Pyasciigraph
 from ascii_graph.colors import Gre, Yel, Red
 from ascii_graph.colordata import hcolor
+from operator import itemgetter
 from tqdm import tqdm
 import tweepy
 import numpy
 import argparse
 import collections
 import datetime
+import requests
 import re
 import json
 import sys
@@ -61,6 +63,9 @@ parser.add_argument('-n', '--name', required=True, metavar="screen_name",
                     help='target screen_name')
 
 parser.add_argument('-f', '--filter', help='filter by source (ex. -f android will get android tweets only)')
+
+parser.add_argument('-i', '--image', action='store_true',
+                    help='perform reverse image search on tineye for banner and profile pic')
 
 parser.add_argument('--no-timezone', action='store_true',
                     help='removes the timezone auto-adjustment (default is UTC)')
@@ -98,9 +103,9 @@ activity_weekly = {
     "%i" % i: 0 for i in range(7)
 }
 
+detected_places = {}
 detected_langs = collections.Counter()
 detected_sources = collections.Counter()
-detected_places = collections.Counter()
 geo_enabled_tweets = 0
 detected_hashtags = collections.Counter()
 detected_domains = collections.Counter()
@@ -111,6 +116,7 @@ mentioned_users = collections.Counter()
 id_screen_names = {}
 friends_timezone = collections.Counter()
 friends_lang = collections.Counter()
+tweets_count = 0
 
 def process_tweet(tweet):
     """ Processing a single Tweet and updating our datasets """
@@ -118,6 +124,10 @@ def process_tweet(tweet):
     global end_date
     global geo_enabled_tweets
     global retweets
+    global tweets_count
+
+    # Increment counter of actually downloaded tweets
+    tweets_count += 1
 
     if args.no_retweets:
         if hasattr(tweet, 'retweeted_status'):
@@ -169,8 +179,16 @@ def process_tweet(tweet):
     # Detecting geolocation
     if tweet.place:
         geo_enabled_tweets += 1
-        tweet.place.name = tweet.place.name
-        detected_places[tweet.place.name] += 1
+
+        # Store detected places with counter and last time visited
+        if tweet.place.name not in detected_places.keys():
+            detected_places[tweet.place.name] = {}
+            detected_places[tweet.place.name]['counter'] = 1
+            detected_places[tweet.place.name]['name'] = tweet.place.name
+            detected_places[tweet.place.name]['last_date'] = tw_date
+        else:
+            detected_places[tweet.place.name]['counter'] += 1
+            if tw_date > detected_places[tweet.place.name]['last_date']: detected_places[tweet.place.name] = tw_date 
 
     # Updating hashtags list
     if tweet.entities['hashtags']:
@@ -282,6 +300,31 @@ def print_stats(dataset, top=5):
         cprint("No data")
     cprint("")
 
+def print_places(dataset, top=5):
+
+    sum = numpy.sum(x['counter'] for x in dataset.values())
+    if sum:
+        cprint("")
+        # print most visited places
+        sorted_dict = sorted(detected_places.values(), key=itemgetter('counter'))
+        sorted_dict = sorted_dict[:top]
+        max_len_key = max([len(str(x['name'])) for x in sorted_dict])  # use to adjust column width
+        for k in sorted_dict:
+            cprint(("- \033[1m{:<%d}\033[0m {:>6} {:<4}" % max_len_key)
+                      .format(k['name'], k['counter'], "(%d%%)" % ((float(k['counter']) / sum) * 100)))
+        cprint("")
+        cprint("[+] Most recent places")
+
+        # print most recent places
+        sorted_dict = sorted(detected_places.values(), key=itemgetter('last_date'))
+        sorted_dict = sorted_dict[:top]
+        for k in sorted_dict:
+            cprint(("- \033[1m{:<%d}\033[0m   {}" % max_len_key)
+                      .format(k['name'], k['last_date'].strftime("%Y-%m-%d")))
+    else:
+        cprint("No data")
+    cprint("")
+
 
 def print_charts(dataset, title, weekday=False):
     """ Prints nice charts based on a dict {(key, value), ...} """
@@ -323,6 +366,15 @@ def print_charts(dataset, title, weekday=False):
             print(line)
     cprint("")
 
+def search_on_tineye(url):
+    try:
+        r = requests.post('https://tineye.com/search', data = {'url' : url})
+        results = int(re.findall('<title>.*?([0-9]*?) results', r.text, re.S)[0])
+    except:
+        results = -1
+        cprint("[\033[91m!\033[0m] Error while performing tineye reverse image search")
+    return results
+
 
 def main():
     global color_supported
@@ -347,14 +399,49 @@ def main():
 
     user_info = twitter_api.get_user(screen_name=args.name)
 
-    cprint("[+] lang           : \033[1m%s\033[0m" % user_info.lang)
-    cprint("[+] geo_enabled    : \033[1m%s\033[0m" % user_info.geo_enabled)
-    cprint("[+] time_zone      : \033[1m%s\033[0m" % user_info.time_zone)
-    cprint("[+] utc_offset     : \033[1m%s\033[0m" % user_info.utc_offset)
+    cprint("    created_at      : \033[1m%s\033[0m" % user_info.created_at)
+    cprint("    location        : \033[1m%s\033[0m" % user_info.location)
+    cprint("    lang            : \033[1m%s\033[0m" % user_info.lang)
+    cprint("    followers_count : \033[1m%s\033[0m" % user_info.followers_count)
+    cprint("    friends_count   : \033[1m%s\033[0m" % user_info.friends_count)
+    cprint("    listed_count    : \033[1m%s\033[0m" % user_info.listed_count)
+    cprint("    geo_enabled     : \033[1m%s\033[0m" % user_info.geo_enabled)
+    cprint("    time_zone       : \033[1m%s\033[0m" % user_info.time_zone)
+    cprint("    utc_offset      : \033[1m%s\033[0m" % user_info.utc_offset)
+
+    if args.image:
+        try:
+            cprint("    rev banner      : \033[1m%d\033[0m" % search_on_tineye(user_info.profile_banner_url))
+            jsono['profile_banner_url'] = user_info.profile_banner_url
+        except:
+            jsono['profile_banner_url'] = ''
+        try:
+            cprint("    rev prof pic    : \033[1m%d\033[0m" % search_on_tineye(user_info.profile_image_url_https))
+            jsono['profile_image_url_https'] = user_info.profile_image_url_https
+        except:
+            jsono['profile_image_url_https'] = ''
+
+    for u in user_info.entities['url']['urls']:
+        cprint("    url             : \033[1m%s\033[0m" % u['expanded_url'])
+
+    cprint("    description     : \033[1m%s\033[0m" % user_info.description)
+    cprint("    statuses_count  : \033[1m%s\033[0m" % user_info.statuses_count)
+    cprint("")
+
+    jsono['status_count'] = user_info.statuses_count
     jsono['user_lang'] = user_info.lang
     jsono['user_geo_enabled'] = user_info.geo_enabled
     jsono['user_time_zone'] = user_info.time_zone
     jsono['user_utc_offset'] = user_info.utc_offset
+    jsono['created_at'] = user_info.created_at
+    jsono['location'] = user_info.location
+    jsono['description'] = user_info.description
+    jsono['followers_count'] = user_info.followers_count
+    jsono['friends_count'] = user_info.friends_count
+    jsono['listed_count'] = user_info.listed_count
+
+
+
 
     if user_info.utc_offset is None:
         cprint("[\033[91m!\033[0m] Can't get specific timezone for this user")
@@ -364,9 +451,6 @@ def main():
         cprint("[\033[91m!\033[0m] Applying timezone offset %d (--utc-offset)" % args.utc_offset)
         jsono['user_utc_offset_set'] = "Applying timezone offset %d (--utc-offset)" % args.utc_offset
 
-    cprint("[+] statuses_count : \033[1m%s\033[0m" % user_info.statuses_count)
-    jsono['status_count'] = user_info.statuses_count
-
     # Will retreive all Tweets from account (or max limit)
     num_tweets = numpy.amin([args.limit, user_info.statuses_count])
     cprint("[+] Retrieving last %d tweets..." % num_tweets)
@@ -374,19 +458,19 @@ def main():
 
     # Download tweets
     get_tweets(twitter_api, args.name, save_file, limit=num_tweets)
-    cprint("[+] Downloaded %d tweets from %s to %s (%d days)" % (num_tweets, start_date, end_date, (end_date - start_date).days))
+    cprint("[+] Downloaded %d tweets from %s to %s (%d days)" % (tweets_count, start_date, end_date, (end_date - start_date).days))
     jsono['status_start_date'] = "%s" % start_date
     jsono['status_end_date'] = "%s" % end_date
     jsono['status_days'] = "%s" % (end_date - start_date).days
 
     # Checking if we have enough data (considering it's good to have at least 30 days of data)
-    if (end_date - start_date).days < 30 and (num_tweets < user_info.statuses_count):
+    if (end_date - start_date).days < 30 and (tweets_count < user_info.statuses_count):
          cprint("[\033[91m!\033[0m] Looks like we do not have enough tweets from user, you should consider retrying (--limit)")
          jsono['status_note'] = "Looks like we do not have enough tweets from user, you should consider retrying (--limit)"
 
     if (end_date - start_date).days != 0:
-        cprint("[+] Average number of tweets per day: \033[1m%.1f\033[0m" % (num_tweets / float((end_date - start_date).days)))
-        jsono['status_average_tweets_per_day'] = (num_tweets / float((end_date - start_date).days))
+        cprint("[+] Average number of tweets per day: \033[1m%.1f\033[0m" % (tweets_count / float((end_date - start_date).days)))
+        jsono['status_average_tweets_per_day'] = (tweets_count / float((end_date - start_date).days))
 
     # Print activity distrubution charts
     if args.json is False:
@@ -409,7 +493,7 @@ def main():
 
     if len(detected_places) != 0:
         cprint("[+] Detected places (top 10)")
-        print_stats(detected_places, top=10)
+        print_places(detected_places, top=10)
         jsono["top_places"] = detected_places
 
     cprint("[+] Top 10 hashtags")
@@ -417,7 +501,7 @@ def main():
     jsono["top_hashtags"] = detected_hashtags
 
     if not args.no_retweets:
-        cprint("[+] @%s did \033[1m%d\033[0m RTs out of %d tweets (%.1f%%)" % (args.name, retweets, num_tweets, (float(retweets) * 100 / num_tweets)))
+        cprint("[+] @%s did \033[1m%d\033[0m RTs out of %d tweets (%.1f%%)" % (args.name, retweets, tweets_count, (float(retweets) * 100 / tweets_count)))
         jsono['rt_count'] = retweets
         # Converting users id to screen_names
         retweeted_users_names = {}
