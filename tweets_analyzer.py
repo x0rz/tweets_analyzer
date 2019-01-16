@@ -29,6 +29,7 @@ import numpy
 import argparse
 import collections
 import datetime
+import requests
 import re
 import json
 import sys
@@ -62,6 +63,9 @@ parser.add_argument('-n', '--name', required=True, metavar="screen_name",
                     help='target screen_name')
 
 parser.add_argument('-f', '--filter', help='filter by source (ex. -f android will get android tweets only)')
+
+parser.add_argument('-i', '--image', action='store_true',
+                    help='perform reverse image search on tineye for banner and profile pic')
 
 parser.add_argument('--no-timezone', action='store_true',
                     help='removes the timezone auto-adjustment (default is UTC)')
@@ -362,6 +366,15 @@ def print_charts(dataset, title, weekday=False):
             print(line)
     cprint("")
 
+def search_on_tineye(url):
+    try:
+        r = requests.post('https://tineye.com/search', data = {'url' : url})
+        results = int(re.findall('<title>.*?([0-9]*?) results', r.text, re.S)[0])
+    except:
+        results = -1
+        cprint("[\033[91m!\033[0m] Error while performing tineye reverse image search")
+    return results
+
 
 def main():
     global color_supported
@@ -386,19 +399,36 @@ def main():
 
     user_info = twitter_api.get_user(screen_name=args.name)
 
-    cprint("[+] created_at     : \033[1m%s\033[0m" % user_info.created_at)
-    cprint("[+] location       : \033[1m%s\033[0m" % user_info.location)
-    cprint("[+] lang           : \033[1m%s\033[0m" % user_info.lang)
-    cprint("[+] followers_count: \033[1m%s\033[0m" % user_info.followers_count)
-    cprint("[+] friends_count  : \033[1m%s\033[0m" % user_info.friends_count)
-    cprint("[+] listed_count   : \033[1m%s\033[0m" % user_info.listed_count)
-    cprint("[+] geo_enabled    : \033[1m%s\033[0m" % user_info.geo_enabled)
-    cprint("[+] time_zone      : \033[1m%s\033[0m" % user_info.time_zone)
-    cprint("[+] utc_offset     : \033[1m%s\033[0m" % user_info.utc_offset)
-    for u in user_info.entities['url']['urls']:
-        cprint("[+] url            : \033[1m%s\033[0m" % u['expanded_url'])
-    cprint("[+] description    : \033[1m%s\033[0m" % user_info.description)
+    cprint("    created_at      : \033[1m%s\033[0m" % user_info.created_at)
+    cprint("    location        : \033[1m%s\033[0m" % user_info.location)
+    cprint("    lang            : \033[1m%s\033[0m" % user_info.lang)
+    cprint("    followers_count : \033[1m%s\033[0m" % user_info.followers_count)
+    cprint("    friends_count   : \033[1m%s\033[0m" % user_info.friends_count)
+    cprint("    listed_count    : \033[1m%s\033[0m" % user_info.listed_count)
+    cprint("    geo_enabled     : \033[1m%s\033[0m" % user_info.geo_enabled)
+    cprint("    time_zone       : \033[1m%s\033[0m" % user_info.time_zone)
+    cprint("    utc_offset      : \033[1m%s\033[0m" % user_info.utc_offset)
 
+    if args.image:
+        try:
+            cprint("    rev banner      : \033[1m%d\033[0m" % search_on_tineye(user_info.profile_banner_url))
+            jsono['profile_banner_url'] = user_info.profile_banner_url
+        except:
+            jsono['profile_banner_url'] = ''
+        try:
+            cprint("    rev prof pic    : \033[1m%d\033[0m" % search_on_tineye(user_info.profile_image_url_https))
+            jsono['profile_image_url_https'] = user_info.profile_image_url_https
+        except:
+            jsono['profile_image_url_https'] = ''
+
+    for u in user_info.entities['url']['urls']:
+        cprint("    url             : \033[1m%s\033[0m" % u['expanded_url'])
+
+    cprint("    description     : \033[1m%s\033[0m" % user_info.description)
+    cprint("    statuses_count  : \033[1m%s\033[0m" % user_info.statuses_count)
+    cprint("")
+
+    jsono['status_count'] = user_info.statuses_count
     jsono['user_lang'] = user_info.lang
     jsono['user_geo_enabled'] = user_info.geo_enabled
     jsono['user_time_zone'] = user_info.time_zone
@@ -411,6 +441,8 @@ def main():
     jsono['listed_count'] = user_info.listed_count
 
 
+
+
     if user_info.utc_offset is None:
         cprint("[\033[91m!\033[0m] Can't get specific timezone for this user")
         jsono['user_utc_offset_note'] = "Can't get specific timezone for this user"
@@ -418,9 +450,6 @@ def main():
     if args.utc_offset:
         cprint("[\033[91m!\033[0m] Applying timezone offset %d (--utc-offset)" % args.utc_offset)
         jsono['user_utc_offset_set'] = "Applying timezone offset %d (--utc-offset)" % args.utc_offset
-
-    cprint("[+] statuses_count : \033[1m%s\033[0m" % user_info.statuses_count)
-    jsono['status_count'] = user_info.statuses_count
 
     # Will retreive all Tweets from account (or max limit)
     num_tweets = numpy.amin([args.limit, user_info.statuses_count])
