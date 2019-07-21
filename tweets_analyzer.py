@@ -392,10 +392,18 @@ def print_sample_tweets(dataset):
 
     for layer in dataset.keys():
         table = PrettyTable()
-        table.field_names = ["Tweet", "Date", "Sentiment", "Subjectivity"]
+        table.field_names = ["Tweet", "Date", "Sentiment", "Subjectivity", "Link"]
         cprint("[+] Tweets that are {}".format(layer))
-        for tweet,sentiment in dataset[layer][0:5]:
-            table.add_row([tweet.text.strip(), str(tweet.created_at), sentiment.polarity, sentiment.subjectivity])
+        if layer in ['negative']:
+            # we want the MOST negative things said
+            data = sorted([i for i in dataset[layer]], key=lambda ii: ii[1].polarity, reverse=False)
+        else:
+            # and the most positive/nutral by default
+            data = sorted([i for i in dataset[layer]], key=lambda ii: ii[1].polarity, reverse=False)
+
+        for tweet,sentiment in data[0:10]:
+            table.add_row([tweet.text.strip(), str(tweet.created_at), sentiment.polarity, sentiment.subjectivity, f"https://twitter.com/{tweet.user.screen_name}/status/{tweet.id}"])
+
         print(table)
 
 
