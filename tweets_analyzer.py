@@ -200,9 +200,12 @@ def process_tweet(tweet):
         if sentence.sentiment.subjectivity == 0:
             polarity['neutral'] += 1
         if sentence.sentiment.subjectivity < 0:
-            polarity['objective'] += 1
+            polarity['negative'] += 1
 
-    x = collections.Counter({'positive': negative, 'negative': negative, 'neutral': neutral})
+    x = collections.Counter({'positive': positive,
+                             'negative': negative,
+                             'neutral': neutral})
+    # print(x.most_common())
     key, value = x.most_common()[0]
 
     if key == 'positive':
