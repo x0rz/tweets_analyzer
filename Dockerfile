@@ -16,6 +16,7 @@ ENV BUILD_DATE=$BUILD_DATE
 ENV BUILD_REPO_ORIGIN=$BUILD_REPO_ORIGIN
 
 RUN apk add --update alpine-sdk
+RUN python -m textblob.download_corpora
 
 WORKDIR /src
 
