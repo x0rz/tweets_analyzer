@@ -1,0 +1,21 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+certifi = "==2018.8.24"
+chardet = "==3.0.4"
+idna = "==2.7"
+numpy = "==1.15.1"
+oauthlib = "==2.1.0"
+requests = "==2.19.1"
+requests-oauthlib = "==1.0.0"
+six = "==1.11.0"
+tqdm = "==4.25.0"
+urllib3 = "==1.23"
+ascii_graph = "==1.5.1"
+PySocks = "==1.6.8"
+tweepy = "==3.7.0"
