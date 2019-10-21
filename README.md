@@ -18,8 +18,16 @@ Python v2.7 or newer is required
 
 You will need the following python packages installed: tweepy, ascii_graph, tqdm, numpy
 
+If you have [pipenv](https://pipenv.kennethreitz.org/en/latest/) installed you can just run:
+
 ```sh
-pip install -r requirements.txt
+$ pipenv install
+```
+
+Otherwise you can use:
+
+```sh
+$ pip install -r requirements.txt
 ```
 
 
