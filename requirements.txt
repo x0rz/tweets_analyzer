@@ -11,3 +11,5 @@ six==1.11.0
 tqdm==4.25.0
 tweepy==3.7.0
 urllib3==1.23
+textblob==0.15.3
+prettytable

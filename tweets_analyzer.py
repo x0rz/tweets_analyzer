@@ -19,9 +19,11 @@
 
 from __future__ import unicode_literals
 
+from textblob import TextBlob
 from ascii_graph import Pyasciigraph
-from ascii_graph.colors import Gre, Yel, Red
-from ascii_graph.colordata import hcolor
+from ascii_graph.colors import Gre, Yel, Red, Blu
+from ascii_graph.colordata import hcolor, vcolor
+from prettytable import PrettyTable
 from tqdm import tqdm
 import tweepy
 import numpy
@@ -102,6 +104,13 @@ detected_langs = collections.Counter()
 detected_sources = collections.Counter()
 detected_places = collections.Counter()
 geo_enabled_tweets = 0
+subjectivity = collections.Counter()
+polarity = collections.Counter()
+sentiment_tweets = {
+    'positive': [],
+    'negative': [],
+    'neutral': [],
+}
 detected_hashtags = collections.Counter()
 detected_domains = collections.Counter()
 detected_timezones = collections.Counter()
@@ -171,6 +180,44 @@ def process_tweet(tweet):
         geo_enabled_tweets += 1
         tweet.place.name = tweet.place.name
         detected_places[tweet.place.name] += 1
+
+    # detect sentiment of tweet
+    blob = TextBlob(tweet.text)
+    blob.tags
+    for sentence in blob.sentences:
+        positive, neutral, negative = 0,0,0
+        # import pdb;pdb.set_trace()
+        # print(sentence.sentiment.polarity)
+        # print(blob.sentiment_assessments)
+        if sentence.sentiment.polarity > 0:
+            positive += 1
+        if sentence.sentiment.polarity == 0:
+            neutral += 1
+        if sentence.sentiment.polarity < 0:
+            negative += 1
+        if sentence.sentiment.subjectivity > 0:
+            polarity['subjective'] +=1 
+        if sentence.sentiment.subjectivity == 0:
+            polarity['neutral'] += 1
+        if sentence.sentiment.subjectivity < 0:
+            polarity['negative'] += 1
+
+    x = collections.Counter({'positive': positive,
+                             'negative': negative,
+                             'neutral': neutral})
+    # print(x.most_common())
+    key, value = x.most_common()[0]
+
+    if key == 'positive':
+        subjectivity['positive'] += value
+        sentiment_tweets['positive'] += [(tweet, blob.sentiment_assessments)]
+    if key == 'neutral':
+        subjectivity['neutral'] += value
+        sentiment_tweets['neutral'] += [(tweet, blob.sentiment_assessments)]
+    if key == 'negative':
+        subjectivity['negative'] += value
+        sentiment_tweets['negative'] += [(tweet, blob.sentiment_assessments)]
+
 
     # Updating hashtags list
     if tweet.entities['hashtags']:
@@ -323,6 +370,42 @@ def print_charts(dataset, title, weekday=False):
             print(line)
     cprint("")
 
+def print_simple_chart(dataset, title):
+    pattern = [Yel]
+    # import pdb;pdb.set_trace()
+    data = vcolor(dataset.most_common(), pattern)
+
+    graph = Pyasciigraph(
+        separator_length=4,
+        multivalue=False,
+        human_readable='si',
+    )
+
+    if args.json is False:
+        for line in graph.graph(title, data):
+            if not color_supported:
+                ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
+                line = ansi_escape.sub('', line)
+            print(line)
+
+def print_sample_tweets(dataset):
+
+    for layer in dataset.keys():
+        table = PrettyTable()
+        table.field_names = ["Tweet", "Date", "Sentiment", "Subjectivity", "Link"]
+        cprint("[+] Tweets that are {}".format(layer))
+        if layer in ['negative']:
+            # we want the MOST negative things said
+            data = sorted([i for i in dataset[layer]], key=lambda ii: ii[1].polarity, reverse=False)
+        else:
+            # and the most positive/nutral by default
+            data = sorted([i for i in dataset[layer]], key=lambda ii: ii[1].polarity, reverse=True)
+
+        for tweet,sentiment in data[0:10]:
+            table.add_row([tweet.text.strip(), str(tweet.created_at), sentiment.polarity, sentiment.subjectivity, f"https://twitter.com/{tweet.user.screen_name}/status/{tweet.id}"])
+
+        print(table)
+
 
 def main():
     global color_supported
@@ -439,6 +522,11 @@ def main():
     print_stats(detected_domains, top=6)
     jsono["top_referenced_domains"] = detected_domains
 
+    cprint("[+] Sentiment")
+    print_simple_chart(subjectivity, title='Sentiment')
+    print_simple_chart(polarity, title='Subjectivity')
+    print_sample_tweets(sentiment_tweets)
+
     if args.friends:
         max_friends = numpy.amin([user_info.friends_count, 300])
         cprint("[+] Getting %d @%s's friends data..." % (max_friends, args.name))
@@ -473,5 +561,5 @@ if __name__ == '__main__':
         main()
     except tweepy.error.TweepError as e:
         cprint("[\033[91m!\033[0m] Twitter error: %s" % e)
-    except Exception as e:
-        cprint("[\033[91m!\033[0m] Error: %s" % e)
+    # except Exception as e:
+    #     cprint("[\033[91m!\033[0m] Error: %s" % e)

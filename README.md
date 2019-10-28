@@ -30,6 +30,22 @@ Otherwise you can use:
 $ pip install -r requirements.txt
 ```
 
+put these into `.env`
+
+```sh
+TWITTER_CONSUMER_KEY=xxxxxx
+TWITTER_CONSUMER_SECRET=xxxxxx
+TWITTER_ACCESS_TOKEN=xxxxxx
+TWITTER_ACCESS_TOKEN_SECRET=xxxxxx
+```
+
+then load the .env file and your keys are now present
+
+```sh
+source source .env
+```
+
+
 
 ### Usage
 
@@ -58,6 +74,15 @@ optional arguments:
                         dd_HH-MM-SS}.json
   --no-color            disables colored output
   --no-retweets         does not evaluate retweets
+```
+
+### Docker
+
+```sh
+# will build the docker image and tag it
+make build
+# will run it so you can append tags
+docker run --rm -it --env-file ${PWD}/.env -v $PWD:/src tweets_analyzer:latest -n x0rz --friends
 ```
 
 ### Example output
