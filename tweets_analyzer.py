@@ -111,6 +111,7 @@ mentioned_users = collections.Counter()
 id_screen_names = {}
 friends_timezone = collections.Counter()
 friends_lang = collections.Counter()
+friends_list = collections.Counter()
 
 def process_tweet(tweet):
     """ Processing a single Tweet and updating our datasets """
@@ -196,6 +197,7 @@ def process_tweet(tweet):
 def process_friend(friend):
     """ Process a single friend """
     friends_lang[friend.lang] += 1 # Getting friend language & timezone
+    friends_list[friend.screen_name] += 1 # Getting friend language & timezone
     if friend.time_zone:
         friends_timezone[friend.time_zone] += 1
 
@@ -457,6 +459,7 @@ def main():
         cprint("[+] Friends timezones")
         print_stats(friends_timezone, top=8)
         jsono["top_friend_timezones"] = friends_timezone
+        jsono["friends"] = friends_list
 
     if args.json is not False:
         print(json.dumps(jsono))
