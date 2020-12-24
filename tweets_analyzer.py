@@ -388,7 +388,7 @@ def main():
         cprint("[+] Average number of tweets per day: \033[1m%.1f\033[0m" % (num_tweets / float((end_date - start_date).days)))
         jsono['status_average_tweets_per_day'] = (num_tweets / float((end_date - start_date).days))
 
-    # Print activity distrubution charts
+    # Print activity distribution charts
     if args.json is False:
         export_string("")
     print_charts(activity_hourly, "Daily activity distribution (per hour)")
