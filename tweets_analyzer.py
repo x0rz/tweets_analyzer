@@ -209,12 +209,12 @@ def get_friends(api, username, limit):
 def get_tweets(api, username, fh, limit):
     """ Download Tweets from username account """
     if args.json is False:
-        for status in tqdm(tweepy.Cursor(api.user_timeline, screen_name=username).items(limit), unit="tw", total=limit):
+        for status in tqdm(tweepy.Cursor(api.user_timeline, screen_name=username,tweet_mode="extended").items(limit), unit="tw", total=limit):
             process_tweet(status)
             if args.save:
                 fh.write(str(json.dumps(status._json))+",")
     else:
-        for status in (tweepy.Cursor(api.user_timeline, screen_name=username).items(limit)):
+        for status in (tweepy.Cursor(api.user_timeline, screen_name=username,tweet_mode="extended").items(limit)):
             process_tweet(status)
             if args.save:
                 fh.write(str(json.dumps(status._json))+",")
