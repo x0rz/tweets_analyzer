@@ -9,7 +9,7 @@ verify_ssl = true
 certifi = "==2018.8.24"
 chardet = "==3.0.4"
 idna = "==2.7"
-numpy = "==1.15.1"
+numpy = "==1.22.0"
 oauthlib = "==2.1.0"
 requests = "==2.19.1"
 requests-oauthlib = "==1.0.0"
